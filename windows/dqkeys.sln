@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dqkeys", "dqkeys.vcproj", "{6211B285-5839-4D05-BD96-E1D4E1DE97D5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dqkeys_gui", "dqkeys_gui.vcproj", "{EA0B3E16-2F97-4A8D-B360-87CB562A2502}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dqkeys_starter", "dqkeys_starter.vcproj", "{232B30D1-CA62-420A-971C-D4DFD3D06828}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6211B285-5839-4D05-BD96-E1D4E1DE97D5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6211B285-5839-4D05-BD96-E1D4E1DE97D5}.Debug|Win32.Build.0 = Debug|Win32
+		{6211B285-5839-4D05-BD96-E1D4E1DE97D5}.Release|Win32.ActiveCfg = Release|Win32
+		{6211B285-5839-4D05-BD96-E1D4E1DE97D5}.Release|Win32.Build.0 = Release|Win32
+		{EA0B3E16-2F97-4A8D-B360-87CB562A2502}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EA0B3E16-2F97-4A8D-B360-87CB562A2502}.Debug|Win32.Build.0 = Debug|Win32
+		{EA0B3E16-2F97-4A8D-B360-87CB562A2502}.Release|Win32.ActiveCfg = Release|Win32
+		{EA0B3E16-2F97-4A8D-B360-87CB562A2502}.Release|Win32.Build.0 = Release|Win32
+		{232B30D1-CA62-420A-971C-D4DFD3D06828}.Debug|Win32.ActiveCfg = Debug|Win32
+		{232B30D1-CA62-420A-971C-D4DFD3D06828}.Debug|Win32.Build.0 = Debug|Win32
+		{232B30D1-CA62-420A-971C-D4DFD3D06828}.Release|Win32.ActiveCfg = Release|Win32
+		{232B30D1-CA62-420A-971C-D4DFD3D06828}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

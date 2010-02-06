@@ -1,0 +1,5 @@
+This code is a huge pile of crap that happens to work.  Most of it was
+originally written nearly a decade ago, originally to implement
+middle-click-paste in Windows.  It was later adapted to Dvorak-Qwerty.  If
+I wrote it again from scratch today it would be very different and much
+cleaner.
