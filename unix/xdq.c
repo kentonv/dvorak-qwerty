@@ -1,7 +1,7 @@
 // "Dvorak-Qwerty" keyboard layout for the X-Window system
 // Copyright 2010 Google Inc.  All rights reserved.
 // http://dvorak-qwerty.googlecode.com
-// Author:  Kenton Varda (kenton@google.com)
+// Author:  Kenton Varda (temporal@gmail.com; formerly kenton@google.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -80,7 +80,7 @@
 
 // IF YOU LIKE IT
 //
-// If you find this useful, consider sending me a note at kenton@google.com to
+// If you find this useful, consider sending me a note at temporal@gmail.com to
 // say so.  Otherwise people only contact me when things don't work and that's
 // depressing.  :)
 

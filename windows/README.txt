@@ -1,7 +1,7 @@
 "Dvorak-Qwerty" keyboard layout for Windows
 Copyright 2010 Kenton Varda and Google Inc.  All rights reserved.
 http://dvorak-qwerty.googlecode.com
-Author:  Kenton Varda (kenton@google.com)
+Author:  Kenton Varda (temporal@gmail.com; formerly kenton@google.com)
 
 INSTALLATION
 
@@ -55,6 +55,6 @@ Unix and the built-in DQ layout on Mac.
 
 IF YOU LIKE IT
 
-If you find this useful, consider sending me a note at kenton@google.com to
+If you find this useful, consider sending me a note at temporal@gmail.com to
 say so.  Otherwise people only contact me when things don't work and that's
 depressing.  :)
