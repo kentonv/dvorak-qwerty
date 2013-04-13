@@ -33,7 +33,7 @@
 //
 // Compile with:
 //
-//   gcc xdq.c -o xdq -std=c99 -O2 -lX11
+//   gcc xdq.c -o xdq -std=gnu99 -O2 -lX11
 //
 // If you don't have GCC, and the C compiler you do have is not C99-compliant,
 // try compiling with a C++ compiler instead.
@@ -89,8 +89,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 
 #define arraysize(array) (sizeof(array) / sizeof((array)[0]))
+#define bit_is_set(arr, i) ((arr[i/8] & (1 << (i % 8))) != 0)
+
+unsigned int kModifierKeycodes[] = {
+  37, 105,       // ctrl (L, R)
+  64, 108,       // alt (L, R)
+  50, 62,        // shift (L, R)
+};
 
 // X keycodes corresponding to keys, regardless of layout.
 const int kKeycodes[] = {
@@ -247,6 +255,8 @@ int main(int argc, char* argv[]) {
   }
 
   // Event loop.
+  XEvent down, up;
+  int state = 0;
   for (;;) {
     XEvent event;
     XNextEvent(display, &event);
@@ -259,7 +269,7 @@ int main(int argc, char* argv[]) {
           break;
         }
 
-        // Remap the keycode.
+        // Interpret the key event, remap it, and save for later.
         // NOTE(kenton):  I think this conditional is always true but better
         //   safe than sorry.
         if (event.xkey.keycode >= 0 &&
@@ -268,12 +278,50 @@ int main(int argc, char* argv[]) {
           if (new_keycode != 0) {
             event.xkey.keycode = new_keycode;
           }
+          
+          // We can't actually send the event yet because during a grab the
+          // active window loses keyboard focus.  Many apps are fine with
+          // receiving key events when not focused, but some get very confused.
+          // The grab (and loss of focus) extends from the KeyPress to the
+          // KeyRelease event, so we'll send both remapped events immediately
+          // after KeyRelease.  Sadly this makes hotkeys feel laggy, but oh
+          // well.
+          
+          if (event.type == KeyPress) {
+            down = event;
+            state = 1;
+          } else if (state == 1 && event.type == KeyRelease) {
+            up = event;
+            state = 2;
+          }
         }
 
-        // Find the focused window and send the event to it.
-        int junk;
-        XGetInputFocus(display, &event.xkey.window, &junk);
-        XSendEvent(display, event.xkey.window, True, 0, &event);
+        // If we have received both a KeyPress and a KeyRelease, send the
+        // remapped events to the currently-focused window.
+        if (state == 2) {
+          // Find the focused window.
+          int junk;
+          XGetInputFocus(display, &down.xkey.window, &junk);
+          up.xkey.window = down.xkey.window;
+          
+          // NX client forgets which modifier keys are down whenever it loses
+          // focus, so check which are down and re-send keydown events for them.
+          char keys[32];
+          XQueryKeymap(display, keys);
+          for (unsigned int i = 0; i < arraysize(kModifierKeycodes); i++) {
+            unsigned int keycode = kModifierKeycodes[i];
+            if (bit_is_set(keys, keycode)) {
+              XEvent modifier = down;
+              modifier.xkey.keycode = keycode;
+              XSendEvent(display, modifier.xkey.window, True, 0, &modifier);
+            }
+          }
+          
+          // Finally, send our remapped KeyPress followed by KeyRelease.
+          XSendEvent(display, down.xkey.window, True, 0, &down);
+          XSendEvent(display, up.xkey.window, True, 0, &up);
+          state = 0;
+        }
 
         break;
       }
