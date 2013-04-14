@@ -257,6 +257,7 @@ int main(int argc, char* argv[]) {
   // Event loop.
   XEvent down, up;
   int state = 0;
+  char keysAtPress[32];
   for (;;) {
     XEvent event;
     XNextEvent(display, &event);
@@ -290,6 +291,7 @@ int main(int argc, char* argv[]) {
           if (event.type == KeyPress) {
             down = event;
             state = 1;
+            XQueryKeymap(display, keysAtPress);
           } else if (state == 1 && event.type == KeyRelease) {
             up = event;
             state = 2;
@@ -306,21 +308,33 @@ int main(int argc, char* argv[]) {
           
           // NX client forgets which modifier keys are down whenever it loses
           // focus, so check which are down and re-send keydown events for them.
-          char keys[32];
-          XQueryKeymap(display, keys);
           for (unsigned int i = 0; i < arraysize(kModifierKeycodes); i++) {
             unsigned int keycode = kModifierKeycodes[i];
-            if (bit_is_set(keys, keycode)) {
+            if (bit_is_set(keysAtPress, keycode)) {
               XEvent modifier = down;
               modifier.xkey.keycode = keycode;
               XSendEvent(display, modifier.xkey.window, True, 0, &modifier);
             }
           }
           
-          // Finally, send our remapped KeyPress followed by KeyRelease.
+          // Send our remapped KeyPress followed by KeyRelease.
           XSendEvent(display, down.xkey.window, True, 0, &down);
           XSendEvent(display, up.xkey.window, True, 0, &up);
           state = 0;
+          
+          // If some modifier keys were released between when the keypress
+          // happened and now, we should send release events.
+          char keys[32];
+          XQueryKeymap(display, keys);
+          for (unsigned int i = 0; i < arraysize(kModifierKeycodes); i++) {
+            unsigned int keycode = kModifierKeycodes[i];
+            if (bit_is_set(keysAtPress, keycode) &&
+                !bit_is_set(keys, keycode)) {
+              XEvent modifier = up;
+              modifier.xkey.keycode = keycode;
+              XSendEvent(display, modifier.xkey.window, True, 0, &modifier);
+            }
+          }
         }
 
         break;
