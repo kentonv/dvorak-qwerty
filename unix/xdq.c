@@ -292,7 +292,8 @@ int main(int argc, char* argv[]) {
             down = event;
             state = 1;
             XQueryKeymap(display, keysAtPress);
-          } else if (state == 1 && event.type == KeyRelease) {
+          } else if (state == 1 && event.type == KeyRelease &&
+                     event.xkey.keycode == down.xkey.keycode) {
             up = event;
             state = 2;
           }
