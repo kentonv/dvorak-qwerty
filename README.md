@@ -10,4 +10,4 @@ This project provides (separate) programs for Windows and X which implement the 
 
 **xdq.c** - Implements DQ on X (Unix/Linux).  See comments at top of file for instructions.
 
-**dq-windows.zip** - Implements DQ on Windows.  Source code and compiled binaries included.
+**dq-windows.zip** - Implements DQ on Windows.  Source code and [compiled binaries](https://github.com/kentonv/dvorak-qwerty/releases) included.
