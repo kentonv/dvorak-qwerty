@@ -109,7 +109,7 @@ void GrabEachKey(Display* display, Window window, int argc, char* argv[]) {
   argv++;
   argc--;
 
-  char *defaultArgv[] = {"Control", "Control+Shift", "Mod1", "Mod1+Śhift"};
+  char *defaultArgv[] = {"Control", "Control+Shift", "Mod1", "Mod1+Shift"};
   int defaultArgc = arraysize(defaultArgv);
   if (argc == 0) {
     argc = defaultArgc;
@@ -215,9 +215,8 @@ int main(int argc, char* argv[]) {
     // Method 2:  Grab each individual key combination.
     //
     // This solves the cursor-disappearing problem with method 1.  We can also
-    // avoid interfering with system hotkeys by only grabbing ctrl and alt
-    // individually but not when used together.  Compile with -DXDQ_GREEDY if
-    // you really want to grab everything.
+    // avoid interfering with system hotkeys by letting the user decide which
+    // modifier combinations are grabbed and which are not.
 
     // We will try to grab all of these modifier combinations.
     GrabEachKey(display, window, argc, argv);
