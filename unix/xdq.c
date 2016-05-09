@@ -29,61 +29,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// HOW TO USE
-//
-// Compile with:
-//
-//   gcc xdq.c -o xdq -std=gnu99 -O2 -lX11
-//
-// If you don't have GCC, and the C compiler you do have is not C99-compliant,
-// try compiling with a C++ compiler instead.
-//
-// Once compiled, make sure your keyboard layout is set to Dvorak and then run
-// the "xdq" binary.  While running, keys you press while holding control or
-// alt (but not both together) will be remapped to Qwerty.  To stop, just kill
-// xdq.
-
-// BACKGROUND
-//
-// This file implements the "Dvorak-Qwerty" keyboard layout, in which the layout
-// is normally Dvorak but switches to Qwerty when control or alt is held.  There
-// are two reasons why I prefer this layout over straight Dvorak:
-// - The common copy/paste hotkeys X, C, and V remain on the left hand, and so
-//   can be used while the right hand is on the mouse.
-// - Holding the control key with my pinky tends to make it hard for me to
-//   remember where many keys are located, because my hands are no longer
-//   positioned as they would be when touch-typing.  Meanwhile, the labels on
-//   my keyboard are Qwerty, because I no longer bother reconfiguring them
-//   physically.  With the Dvorak-Qwerty layout, I can look at the keyboard to
-//   find the key I want.
-//
-// The layout is available by default on Mac OSX.  Unfortunately, it is not
-// typically shipped with Linux distributions.  Even more unfortunately,
-// although it is possible to define an XKB layout which implements
-// Dvorak-Qwerty, doing so exposes a depressing number of bugs across the board
-// in X apps.  Since it is the responsibility of each X app to interpret the
-// keyboard layout itself, rather than having the X server do the work,
-// different GUI frameworks actually tend to have different bugs that kick in
-// when using such a layout.  Fixing them all would be infeasible.
-//
-// This program instead works by passively grabbing (with XGrabKey()) all
-// relevant combinations, rewriting the event, and then using XSendEvent() to
-// send it to the focused window.
-//
-// xdq can only remap program-level hotkeys, not system-level hotkeys, as
-// system-level hotkeys are typically themselves implemented using XGrabKey().
-// To avoid conflicts with system-level hotkeys, xdq only grabs key combinations
-// involving holding control *or* alt, not both together.  xdq also does NOT
-// try to grab anything involving the "windows" key.  If you would like xdq to
-// grab all these keys as well, system hotkeys be damned, then compile with
-// -DXDQ_GREEDY.
-
-// IF YOU LIKE IT
-//
-// If you find this useful, consider sending me a note at temporal@gmail.com to
-// say so.  Otherwise people only contact me when things don't work and that's
-// depressing.  :)
-
 #include <X11/Xlib.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -159,6 +104,72 @@ int HandleError(Display* display, XErrorEvent* error) {
   }
 }
 
+void GrabEachKey(Display* display, Window window, int argc, char* argv[]) {
+  // Waste the first argument, since it's just the program name.
+  argv++;
+  argc--;
+
+  char *defaultArgv[] = {"Control", "Control+Shift", "Mod1", "Mod1+Śhift"};
+  int defaultArgc = arraysize(defaultArgv);
+  if (argc == 0) {
+    argc = defaultArgc;
+    argv = defaultArgv;
+  }
+
+  // Often, some keys are already grabbed, e.g. by the desktop environment.
+  // Set an error handler so that we can ignore those.
+  original_error_handler = XSetErrorHandler(&HandleError);
+
+  for (int i = 0; i < argc; i++) {
+    unsigned int modifiers = 0;
+
+    if (strstr(argv[i], "Shift")) {
+      modifiers |= ShiftMask;
+    }
+    if (strstr(argv[i], "CapsLock")) {
+      modifiers |= LockMask;
+    }
+    if (strstr(argv[i], "Control")) {
+      modifiers |= ControlMask;
+    }
+    if (strstr(argv[i], "Mod1")) {
+      modifiers |= Mod1Mask;
+    }
+    if (strstr(argv[i], "Mod2")) {
+      modifiers |= Mod2Mask;
+    }
+    if (strstr(argv[i], "Mod3")) {
+      modifiers |= Mod3Mask;
+    }
+    if (strstr(argv[i], "Mod4")) {
+      modifiers |= Mod4Mask;
+    }
+    if (strstr(argv[i], "Mod5")) {
+      modifiers |= Mod5Mask;
+    }
+    if (modifiers == 0) {
+      fprintf(stderr, "Could not recognize modifiers in '%s'; ignoring...\n",
+              argv[i]);
+      continue;
+    }
+
+    for (int j = 0; j < arraysize(kKeycodes); j++) {
+      XGrabKey(display, kKeycodes[j], modifiers, window, True,
+               GrabModeAsync, GrabModeAsync);
+    }
+  }
+
+  // Make sure all errors have been reported, then print how many errors we saw.
+  XSync(display, False);
+  if (failed_grab_count != 0) {
+    fprintf(stderr, "Failed to grab %d key combinations.\n", failed_grab_count);
+    fprintf(stderr,
+      "This is probably because some hotkeys are already grabbed by the system.\n"
+      "Unfortunately, these system-wide hotkeys cannot be automatically remapped by\n"
+      "this tool.  However, you can usually configure them manually.\n");
+  }
+}
+
 int main(int argc, char* argv[]) {
   InitKeycodeMapping();
 
@@ -209,49 +220,7 @@ int main(int argc, char* argv[]) {
     // you really want to grab everything.
 
     // We will try to grab all of these modifier combinations.
-    unsigned int modifiers[] = {
-      // Control.
-      ControlMask,
-      ControlMask | ShiftMask,
-
-      // Alt.
-      Mod1Mask,
-      Mod1Mask | ShiftMask,
-
-#ifdef XQD_GREEDY
-      // Command/"Windows" key.  This is usually used for system-level hotkeys,
-      // so only grab it in greedy mode.
-      Mod4Mask,
-      Mod4Mask | ShiftMask,
-
-      // Control + Alt.  Also typically used for system-level hotkeys.
-      ControlMask | Mod1Mask,
-      ControlMask | Mod1Mask | ShiftMask,
-#endif
-
-      // TODO(kenton):  Other combinations?
-    };
-
-    // Often, some keys are already grabbed, e.g. by the desktop environment.
-    // Set an error handler so that we can ignore those.
-    original_error_handler = XSetErrorHandler(&HandleError);
-
-    for (int i = 0; i < arraysize(kKeycodes); i++) {
-      for (int j = 0; j < arraysize(modifiers); j++) {
-        XGrabKey(display, kKeycodes[i], modifiers[j], window, True,
-                 GrabModeAsync, GrabModeAsync);
-      }
-    }
-  }
-
-  // Make sure all errors have been reported, then print how many errors we saw.
-  XSync(display, False);
-  if (failed_grab_count != 0) {
-    fprintf(stderr, "Failed to grab %d key combinations.\n", failed_grab_count);
-    fprintf(stderr,
-      "This is probably because some hotkeys are already grabbed by the system.\n"
-      "Unfortunately, these system-wide hotkeys cannot be automatically remapped by\n"
-      "this tool.  However, you can usually configure them manually.\n");
+    GrabEachKey(display, window, argc, argv);
   }
 
   // Event loop.
