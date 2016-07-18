@@ -95,26 +95,26 @@ static void InitKeycodeMapping() {
   }
 }
 
-#ifndef MODIFIER_LIMIT
-#define MODIFIER_LIMIT 16
+#ifndef XDQ_MODIFIER_LIMIT
+#define XDQ_MODIFIER_LIMIT 16
 #endif
 
 // These are the enabled modifiers, defined by the user as program arguments.
-static unsigned int modifiers[MODIFIER_LIMIT];
+static unsigned int modifiers[XDQ_MODIFIER_LIMIT];
 static int modifier_count;
 
 static int WhineOverModifierCount(unsigned int count) {
    fprintf(stderr, "Error: Too many modifiers. (current limit is %u)\n",
-       MODIFIER_LIMIT);
+       XDQ_MODIFIER_LIMIT);
    fprintf(stderr, "Please increase the modifier limit:\n");
-   fprintf(stderr, "gcc xdq.c -o xdq -std=gnu99 -O2 -lX11 -DMODIFIER_LIMIT=%u\n",
+   fprintf(stderr, "gcc xdq.c -o xdq -std=gnu99 -O2 -lX11 -DXDQ_MODIFIER_LIMIT=%u\n",
        count);
    return 1;
 }
 
 static int InitializeDefaultModifiers(void) {
   modifier_count = 4;
-  if (modifier_count > MODIFIER_LIMIT) {
+  if (modifier_count > XDQ_MODIFIER_LIMIT) {
     return WhineOverModifierCount(modifier_count);
   }
 
@@ -135,7 +135,7 @@ static int ParseArgs(int argc, char* argv[]) {
   if (argc == 0) {
     return InitializeDefaultModifiers();
   }
-  if (argc > MODIFIER_LIMIT) {
+  if (argc > XDQ_MODIFIER_LIMIT) {
     return WhineOverModifierCount(argc);
   }
 
