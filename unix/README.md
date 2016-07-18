@@ -9,19 +9,19 @@ Compile with:
 If you don't have GCC, and the C compiler you do have is not C99-compliant,
 try compiling with a C++ compiler instead.
 
-Once compiled, make sure your keyboard layout is set to Dvorak, all locks
-are disabled (NumLock, CapsLock, etc) and then run the `xdq` binary.
-While running, keys you press while holding control or alt (but not both
-together) will be remapped to Qwerty.  To stop, just kill `xdq`.
+Run with:
 
-If you want to remap other key combinations, see the "ARGUMENTS" section
-below.
+  ./xdq [Modifiers]
+
+Once active, and whenever your keyboard layout is set to Dvorak, keys you press
+while holding `[Modifiers]` (see "Arguments" below) will be remapped to
+Qwerty. To stop, just kill `xdq`.
 
 ## Background
 
 This file implements the "Dvorak-Qwerty" keyboard layout, in which the layout
-is normally Dvorak but switches to Qwerty when control or alt is held.  There
-are two reasons why I prefer this layout over straight Dvorak:
+is normally Dvorak but switches to Qwerty when certain modifiers are held.
+There are two reasons why I prefer this layout over straight Dvorak:
 
 - The common copy/paste hotkeys X, C, and V remain on the left hand, and so
   can be used while the right hand is on the mouse.
