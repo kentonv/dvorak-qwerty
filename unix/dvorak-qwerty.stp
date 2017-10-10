@@ -1,0 +1,107 @@
+#! /usr/bin/env stap
+
+# A systemtap script which implements "Dvorak with Qwerty hotkeys" by MITMing
+# key events in the kernel.
+#
+# You must install systemtap and your kernel's debug symbols. On Debian:
+#   sudo apt install systemtap linux-headers-$(uname -r) linux-image-$(uname -r)-dbg
+#
+# Warning: The debug symbols are a HUGE package and will need to be updated each
+#   time your kernel updates.
+#
+# Usage:
+#   sudo stap -g dvorak-qwerty.stp
+#
+# Ctrl-C to stop intercepting.
+
+%{
+
+int modifiers = 0;
+static int modifier_bit(int key) {
+  switch (key) {
+    case 29: return 1;     // l-ctrl
+    case 97: return 2;     // r-ctrl
+    case 56: return 4;     // l-alt
+    case 100: return 8;    // r-alt
+    case 219: return 16;   // meta ("windows")
+  }
+  return 0;
+}
+
+static int qwerty2dvorak(int key) {
+  switch (key) {
+    case 12: return 40;
+    case 13: return 27;
+    case 16: return 45;
+    case 17: return 51;
+    case 18: return 32;
+    case 19: return 24;
+    case 20: return 37;
+    case 21: return 20;
+    case 22: return 33;
+    case 23: return 34;
+    case 24: return 31;
+    case 25: return 19;
+    case 26: return 12;
+    case 27: return 13;
+    case 30: return 30;
+    case 31: return 39;
+    case 32: return 35;
+    case 33: return 21;
+    case 34: return 22;
+    case 35: return 36;
+    case 36: return 46;
+    case 37: return 47;
+    case 38: return 25;
+    case 39: return 44;
+    case 40: return 16;
+    case 44: return 53;
+    case 45: return 48;
+    case 46: return 23;
+    case 47: return 52;
+    case 48: return 49;
+    case 49: return 38;
+    case 50: return 50;
+    case 51: return 17;
+    case 52: return 18;
+    case 53: return 26;
+  }
+  return key;
+}
+
+%}
+
+function handle_event:long(code:long, down:long) %{
+  int mod = modifier_bit(STAP_ARG_code);
+  if (mod) {
+    if (STAP_ARG_down) {
+      modifiers |= mod;
+    } else {
+      modifiers &= ~mod;
+    }
+  }
+  
+  if (modifiers) {
+    STAP_RETVALUE = qwerty2dvorak(STAP_ARG_code);
+  } else {
+    STAP_RETVALUE = STAP_ARG_code;
+  }
+%}
+
+# X / Wayland events
+probe module("evdev").function("evdev_events") {
+  # Changes 'm' to 'b' .
+  for (i = 0; i < $count; i++) {
+    if ($vals[i]->type == 1) {
+      $vals[i]->code = handle_event($vals[i]->code, $vals[i]->value)
+    }
+  }
+}
+
+# Text terminal events
+probe kernel.function("kbd_event") {
+  if ($event_type == 1) {
+    $event_code = handle_event($event_code, $value)
+  }
+}
+
