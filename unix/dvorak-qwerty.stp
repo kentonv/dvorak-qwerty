@@ -90,7 +90,6 @@ function handle_event:long(code:long, down:long) %{
 
 # X / Wayland events
 probe module("evdev").function("evdev_events") {
-  # Changes 'm' to 'b' .
   for (i = 0; i < $count; i++) {
     if ($vals[i]->type == 1) {
       $vals[i]->code = handle_event($vals[i]->code, $vals[i]->value)
