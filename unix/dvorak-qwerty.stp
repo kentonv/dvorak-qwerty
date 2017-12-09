@@ -38,7 +38,21 @@
 
 %{
 
-int modifiers = 0;
+typedef struct {
+  int modifiers;
+  // Bitmask of modifier keys that are currently pressed (e.g. ctrl, alt).
+
+  int remapped_key;
+  // If non-zero, indicates a key which is currently down which was remapped
+  // to Qwerty. We must store this in case the user releases the modifiers
+  // before releasing the key that was modified, because we need to make sure
+  // the eventual key-up event matches the remapped key-down event.
+} DqState;
+
+static DqState dq_states[2] = {{0, 0}, {0, 0}};
+// We need two states, one for each kernel input codepath we're modifying
+// (evdev and kbd).
+
 static int modifier_bit(int key) {
   switch (key) {
     case 29: return 1;     // l-ctrl
@@ -93,19 +107,37 @@ static int qwerty2dvorak(int key) {
 
 %}
 
-function handle_event:long(code:long, down:long) %{
+function handle_event:long(code:long, down:long, index:long) %{
+  DqState* state = dq_states + STAP_ARG_index;
+
   int mod = modifier_bit(STAP_ARG_code);
   if (mod) {
+    // This is a modifier key. Update the modifier state.
     if (STAP_ARG_down) {
-      modifiers |= mod;
+      state->modifiers |= mod;
     } else {
-      modifiers &= ~mod;
+      state->modifiers &= ~mod;
     }
-  }
-  
-  if (modifiers) {
+    STAP_RETVALUE = STAP_ARG_code;
+  } else if (STAP_ARG_code == state->remapped_key) {
+    // The key is currently down and was remapped at the time it was initially
+    // pressed. We need to remap it even if the modifier keys are no longer
+    // pressed, since the eventual "up" event has to have the same key code as
+    // the original "down" event.
+    if (!STAP_ARG_down) {
+      // This is a keyup event, so after this we don't need to track this key
+      // anymore.
+      state->remapped_key = 0;
+    }
+    STAP_RETVALUE = qwerty2dvorak(STAP_ARG_code);
+  } else if (STAP_ARG_down == 1 && state->modifiers && !state->remapped_key) {
+    // This is a keydown event for a newly-pressed key, and at least one
+    // modifier key is already down, and no other key is already down. So,
+    // record that this key is the remapped key, and remap the keypress.
+    state->remapped_key = STAP_ARG_code;
     STAP_RETVALUE = qwerty2dvorak(STAP_ARG_code);
   } else {
+    // Just a regular keypress.
     STAP_RETVALUE = STAP_ARG_code;
   }
 %}
@@ -114,7 +146,7 @@ function handle_event:long(code:long, down:long) %{
 probe module("evdev").function("evdev_events") {
   for (i = 0; i < $count; i++) {
     if ($vals[i]->type == 1) {
-      $vals[i]->code = handle_event($vals[i]->code, $vals[i]->value)
+      $vals[i]->code = handle_event($vals[i]->code, $vals[i]->value, 0)
     }
   }
 }
@@ -122,7 +154,7 @@ probe module("evdev").function("evdev_events") {
 # Text terminal events
 probe kernel.function("kbd_event") {
   if ($event_type == 1) {
-    $event_code = handle_event($event_code, $value)
+    $event_code = handle_event($event_code, $value, 1)
   }
 }
 
