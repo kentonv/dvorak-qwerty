@@ -134,8 +134,14 @@ function handle_event:long(code:long, down:long, index:long) %{
     // This is a keydown event for a newly-pressed key, and at least one
     // modifier key is already down, and no other key is already down. So,
     // record that this key is the remapped key, and remap the keypress.
-    state->remapped_key = STAP_ARG_code;
     STAP_RETVALUE = qwerty2dvorak(STAP_ARG_code);
+
+    // Only bother recording this key as remapped if the key code in fact
+    // changed. (In particular we don't want to record, say, the shift key as
+    // the remapped key, since this breaks ctrl+shift+whatever hotkeys.)
+    if (STAP_RETVALUE != STAP_ARG_code) {
+      state->remapped_key = STAP_ARG_code;
+    }
   } else {
     // Just a regular keypress.
     STAP_RETVALUE = STAP_ARG_code;
