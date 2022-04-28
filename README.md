@@ -31,6 +31,6 @@ By others (*I have not tested these*):
 
 ### Chrome OS
 
-This let's you use Dvorak Control Qwerty Chrome OS by setting the keyboard layout to Qwerty and then overiding it to Dvorak using the IME interface.  You need to install it in Developer mode and then enable the extension under chrome://extensions/ and then the keyboard under Chrome OS settings.  Autocorrect doesn't work as of right now.
+By others (*I have not tested these*):
 
 * [Dvorak Control Qwerty Chrome OS](https://github.com/7fe/dvorak-qwerty-chromeos)
