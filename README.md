@@ -28,3 +28,9 @@ By me:
 By others (*I have not tested these*):
 
 * [Jeffrey Min's implementation](https://github.com/chid/dvorak-querty/tree/master/dverty). I haven't tested this.
+
+### Chrome OS
+
+By others (*I have not tested these*):
+
+* [Dvorak Control Qwerty Chrome OS](https://github.com/7fe/dvorak-qwerty-chromeos)
