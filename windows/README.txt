@@ -13,14 +13,18 @@ USE
 1) Set your system's keyboard layout to Dvorak.
 
 2) Run dqkeys_gui.  An icon will appear in your task bar.  While this icon
-   is present, any key you press while holding ctrl or alt will be remapped
-   to Qwerty.  To stop, click the icon and choose "exit".
+   is present, any key you press while holding ctrl, alt, or the Windows key 
+   will be remapped to Qwerty, but ONLY when your system keyboard layout is 
+   set to Dvorak. For other keyboard layouts, the program will not interfere.
+   To stop, click the icon and choose "exit".
 
 BACKGROUND
 
 This progam implements the "Dvorak-Qwerty" keyboard layout, in which the layout
-is normally Dvorak but switches to Qwerty when control or alt is held.  There
-are two reasons why I prefer this layout over straight Dvorak:
+is normally Dvorak but switches to Qwerty when control, alt, or the Windows key 
+is held. The program automatically detects when Dvorak layout is active and only
+performs remapping in that case - it will not interfere with other keyboard layouts.
+There are two reasons why I prefer this layout over straight Dvorak:
 - The common copy/paste hotkeys X, C, and V remain on the left hand, and so
   can be used while the right hand is on the mouse.
 - Holding the control key with my pinky tends to make it hard for me to
@@ -39,10 +43,10 @@ and rewrites input events.
 This program works by registering a "hook" using SetWindowsHookEx.  This
 causes every keyboard event to be run through a filter function implemented
 by dqkeys.dll.  The filter function filters out keys pressed while holding
-control or alt and generates new, fake events as if the key were typed on
-a Qwerty layout.  Unfortunately the new, fake events end up going back through
-the filter function, so it must intelligently recognize and not filter them to
-avoid an infinite loop.
+control, alt, or the Windows key and generates new, fake events as if the key 
+were typed on a Qwerty layout.  Unfortunately the new, fake events end up going 
+back through the filter function, so it must intelligently recognize and not 
+filter them to avoid an infinite loop.
 
 The remapping does not work with all software.  Some software actually uses
 hooks of its own to read input, and these hooks may be executed before the

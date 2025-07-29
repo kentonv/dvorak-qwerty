@@ -3,6 +3,9 @@
 // http://dvorak-qwerty.googlecode.com
 // Author:  Kenton Varda (temporal@gmail.com; formerly kenton@google.com)
 //
+// Updated to support Windows key (VK_LWIN/VK_RWIN) as modifier for Qwerty mode
+// Only activates when the current keyboard layout is Dvorak
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -41,6 +44,7 @@ static volatile HHOOK  gLlHook = NULL;
 
 static volatile bool gControlDown = false;
 static volatile bool gAltDown = false;
+static volatile bool gWinDown = false;
 
 static volatile bool gExpectedKeys[256];
 static volatile bool gFakeDownKeys[256];
@@ -296,6 +300,28 @@ void UpFakeKeys() {
 
 static const int kReleaseBit = 1 << 31;
 
+// Function to check if the current keyboard layout is Dvorak
+bool IsDvorakLayout() {
+  // Get the current keyboard layout for the current thread
+  HKL hkl = GetKeyboardLayout(0);
+  
+  // Extract the layout identifier (KLID) from the HKL
+  // The KLID is in the low word of the HKL
+  WORD layoutId = LOWORD(hkl);
+  
+  // Known Dvorak layout identifiers:
+  // 0x00010409 = US Dvorak
+  // 0x00030409 = US Dvorak for left hand
+  // 0x00040409 = US Dvorak for right hand
+  return (layoutId == 0x0409 && (HIWORD(hkl) == 0x0001 || 
+                                  HIWORD(hkl) == 0x0003 || 
+                                  HIWORD(hkl) == 0x0004)) ||
+         // Also check for the standard Dvorak KLID
+         (hkl == (HKL)0x00010409) ||
+         (hkl == (HKL)0x00030409) ||
+         (hkl == (HKL)0x00040409);
+}
+
 bool DoKeyboardEvent(int code, WPARAM wparam, LPARAM lparam)
 {
   bool down = (lparam & kReleaseBit) == 0;
@@ -304,12 +330,18 @@ bool DoKeyboardEvent(int code, WPARAM wparam, LPARAM lparam)
   {
   case VK_CONTROL:
     gControlDown = down;
-    if (!gAltDown) UpFakeKeys();
+    if (!gAltDown && !gWinDown) UpFakeKeys();
     break;
 
   case VK_MENU:
     gAltDown = down;
-    if (!gControlDown) UpFakeKeys();
+    if (!gControlDown && !gWinDown) UpFakeKeys();
+    break;
+
+  case VK_LWIN:
+  case VK_RWIN:
+    gWinDown = down;
+    if (!gControlDown && !gAltDown) UpFakeKeys();
     break;
 
   default:
@@ -318,7 +350,8 @@ bool DoKeyboardEvent(int code, WPARAM wparam, LPARAM lparam)
         if (code != HC_NOREMOVE) {
           gExpectedKeys[wparam] = false;
         }
-      } else if ((gControlDown || gAltDown) &&
+      } else if ((gControlDown || gAltDown || gWinDown) &&
+                 IsDvorakLayout() &&  // Only remap when Dvorak layout is active
                  kDvorakToQwerty[wparam] != 0 &&
              kDvorakToQwerty[wparam] != wparam) {
         unsigned char mappedKey = kDvorakToQwerty[wparam];

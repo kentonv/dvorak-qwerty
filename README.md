@@ -23,7 +23,7 @@ By others:
 
 By me:
 
-* [dq-windows.zip](https://github.com/kentonv/dvorak-qwerty/releases/download/ancient/dq-windows.zip) - Implements DQ on Windows.  Source code and [compiled binaries](https://github.com/kentonv/dvorak-qwerty/releases) included. **WARNING:** This code was originally written literally half my lifetime ago and I have not used it in nearly a decade since I don't use Windows anymore. I hear it still works, though.
+* [dq-windows.zip](https://github.com/kentonv/dvorak-qwerty/releases/download/ancient/dq-windows.zip) - Implements DQ on Windows. Source code and [compiled binaries](https://github.com/kentonv/dvorak-qwerty/releases) included. **Updated to support Windows key as modifier**. **WARNING:** This code was originally written literally half my lifetime ago and I have not used it in nearly a decade since I don't use Windows anymore. I hear it still works, though.
 
 By others (*I have not tested these*):
 
