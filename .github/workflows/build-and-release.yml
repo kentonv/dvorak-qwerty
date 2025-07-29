@@ -1,0 +1,190 @@
+name: Build and Release Dvorak-Qwerty
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-windows:
+    runs-on: windows-2019  # Use older Windows for better legacy support
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSBuild (Legacy)
+      uses: microsoft/setup-msbuild@v1.3
+      with:
+        vs-version: '16.0'  # Visual Studio 2019
+        
+    - name: Setup Visual Studio environment
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x86  # Build for 32-bit compatibility
+        vsversion: 2019
+        
+    - name: Build Solution (32-bit)
+      run: |
+        cd windows
+        # Try building with the solution file first
+        if (Test-Path "dqkeys.sln") {
+          msbuild dqkeys.sln /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v142
+        } else {
+          # Fall back to individual project builds with legacy toolset
+          msbuild dqkeys.vcproj /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v142 /p:WindowsTargetPlatformVersion=10.0
+          msbuild dqkeys_gui.vcproj /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v142 /p:WindowsTargetPlatformVersion=10.0
+          msbuild dqkeys_starter.vcproj /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v142 /p:WindowsTargetPlatformVersion=10.0
+        }
+      shell: powershell
+      continue-on-error: true
+        
+    - name: Alternative build with DevEnv (if MSBuild fails)
+      run: |
+        cd windows
+        # Try using devenv as alternative
+        if (Test-Path "dqkeys.sln") {
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\devenv.exe" dqkeys.sln /build Release
+        }
+      shell: powershell
+      continue-on-error: true
+      
+    - name: Manual compile with CL (fallback)
+      run: |
+        cd windows
+        # Manual compilation as final fallback
+        cl /LD /Fe:dqkeys.dll dqkeys.cpp /link user32.lib kernel32.lib /DEF:dqkeys.def
+        cl /Fe:dqkeys_gui.exe dqkeys_gui.cpp dqkeys_gui.rc /link user32.lib shell32.lib comctl32.lib
+        cl /Fe:dqkeys_starter.exe dqkeys_starter.cpp /link user32.lib
+      shell: cmd
+      continue-on-error: true
+        
+    - name: Check build outputs
+      run: |
+        cd windows
+        Write-Host "Checking for build outputs..."
+        Get-ChildItem -Recurse -Include "*.dll","*.exe" | Where-Object { $_.Name -like "*dqkeys*" }
+      shell: powershell
+        
+    - name: Create release directory and copy files
+      run: |
+        mkdir release
+        cd windows
+        
+        # Find and copy built files
+        $dll = Get-ChildItem -Recurse -Name "dqkeys.dll" | Select-Object -First 1
+        $gui = Get-ChildItem -Recurse -Name "dqkeys_gui.exe" | Select-Object -First 1
+        $starter = Get-ChildItem -Recurse -Name "dqkeys_starter.exe" | Select-Object -First 1
+        
+        if ($dll) { Copy-Item $dll ..\release\ }
+        if ($gui) { Copy-Item $gui ..\release\ }
+        if ($starter) { Copy-Item $starter ..\release\ }
+        
+        # Copy documentation
+        Copy-Item README.txt ..\release\
+        Copy-Item COPYING.txt ..\release\
+        Copy-Item ..\README.md ..\release\
+      shell: powershell
+        
+    - name: Create ZIP archive
+      run: |
+        if (Test-Path "release\dqkeys.dll") {
+          cd release
+          Compress-Archive -Path * -DestinationPath ..\dq-windows.zip
+          Write-Host "Created dq-windows.zip successfully"
+        } else {
+          Write-Host "Build failed - no DLL found"
+          exit 1
+        }
+      shell: powershell
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: |
+          release/
+          dq-windows.zip
+
+  create-release:
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-build
+        path: ./artifacts/
+        
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Dvorak-Qwerty ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## Dvorak-Qwerty for Windows ${{ steps.get_version.outputs.VERSION }}
+          
+          ### What's New in This Release
+          - ✅ **Windows key support** - Use Win+key combinations in Qwerty mode
+          - ✅ **Smart layout detection** - Only activates when Dvorak layout is active
+          - ✅ **Non-intrusive** - Won't interfere with other keyboard layouts
+          - ✅ **Enhanced compatibility** - Better support for modern Windows versions
+          
+          ### Downloads
+          - **dq-windows.zip**: Windows application (32-bit for maximum compatibility)
+          
+          ### Quick Start
+          1. Download `dq-windows.zip`
+          2. Extract to any folder
+          3. Set your Windows keyboard layout to **Dvorak**
+          4. Run `dqkeys_gui.exe`
+          5. Look for the system tray icon
+          
+          ### How It Works
+          When active, holding **Ctrl**, **Alt**, or **Windows key** temporarily switches to QWERTY layout for shortcuts and hotkeys. This only happens when your system keyboard layout is set to Dvorak - other layouts are unaffected.
+          
+          ### Perfect For
+          - Dvorak typists who want familiar shortcuts (Ctrl+C, Ctrl+V on left hand)
+          - Users who switch between Dvorak and other layouts
+          - Anyone who wants Dvorak typing with QWERTY muscle memory for hotkeys
+          
+          ### System Requirements
+          - Windows 7 or later (Windows 10/11 recommended)
+          - Dvorak keyboard layout installed in Windows
+          - No additional dependencies required
+          
+          ### Technical Details
+          - Uses Windows keyboard hooks for real-time remapping
+          - Automatic Dvorak layout detection via Windows API
+          - Minimal system impact - only active during modifier key combinations
+          
+          ---
+          
+          **Need help?** Check the included README.txt or visit the repository for documentation.
+          
+          **Like this project?** Consider starring the repository or sending feedback!
+        draft: false
+        prerelease: false
+        
+    - name: Upload Windows Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/dq-windows.zip
+        asset_name: dq-windows.zip
+        asset_content_type: application/zip
