@@ -85,6 +85,7 @@
 // depressing.  :)
 
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -149,6 +150,30 @@ void InitKeycodeMapping() {
 // really fatal so we catch them.
 int failed_grab_count = 0;
 int (*original_error_handler)(Display* display, XErrorEvent* error);
+
+// Returns the modifier mask (e.g. Mod2Mask) to which the given keysym is bound,
+// or zero if it isn't bound to any modifier.  The X protocol fixes shift, lock,
+// and control, but which of Mod1Mask..Mod5Mask means "num lock" (or "scroll
+// lock", or "alt", for that matter) is up to the keymap, so we have to ask.
+unsigned int FindModifierMask(Display* display, KeySym keysym) {
+  KeyCode keycode = XKeysymToKeycode(display, keysym);
+  if (keycode == 0) return 0;
+
+  XModifierKeymap* modmap = XGetModifierMapping(display);
+  if (modmap == NULL) return 0;
+
+  unsigned int result = 0;
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < modmap->max_keypermod; j++) {
+      if (modmap->modifiermap[i * modmap->max_keypermod + j] == keycode) {
+        result = 1 << i;
+      }
+    }
+  }
+
+  XFreeModifiermap(modmap);
+  return result;
+}
 
 int HandleError(Display* display, XErrorEvent* error) {
   if (error->error_code == BadAccess) {
@@ -218,7 +243,7 @@ int main(int argc, char* argv[]) {
       Mod1Mask,
       Mod1Mask | ShiftMask,
 
-#ifdef XQD_GREEDY
+#ifdef XDQ_GREEDY
       // Command/"Windows" key.  This is usually used for system-level hotkeys,
       // so only grab it in greedy mode.
       Mod4Mask,
@@ -232,14 +257,41 @@ int main(int argc, char* argv[]) {
       // TODO(kenton):  Other combinations?
     };
 
+    // XGrabKey() matches the modifier mask *exactly*: a grab registered for
+    // ControlMask does not fire if any other modifier bit happens to be set at
+    // the time.  That includes the "lock" modifiers -- caps lock, num lock and
+    // scroll lock -- which are latched rather than held, and which the user
+    // does not think of as part of the hotkey at all.  Without accounting for
+    // them, xdq silently stops remapping anything whenever num lock is on,
+    // which on many keyboards is the default state at boot.
+    //
+    // The standard workaround is to register each grab once for every
+    // combination of the lock modifiers.  Caps lock is always LockMask; num
+    // lock and scroll lock have to be looked up in the modifier map.
+    unsigned int lock_mask = LockMask
+                           | FindModifierMask(display, XK_Num_Lock)
+                           | FindModifierMask(display, XK_Scroll_Lock);
+
+    // Enumerate every subset of lock_mask.  At most three distinct bits can be
+    // set, so at most eight subsets exist.
+    unsigned int lock_combos[8];
+    int num_lock_combos = 0;
+    for (unsigned int m = 0; m <= lock_mask; m++) {
+      if ((m & ~lock_mask) == 0 && num_lock_combos < arraysize(lock_combos)) {
+        lock_combos[num_lock_combos++] = m;
+      }
+    }
+
     // Often, some keys are already grabbed, e.g. by the desktop environment.
     // Set an error handler so that we can ignore those.
     original_error_handler = XSetErrorHandler(&HandleError);
 
     for (int i = 0; i < arraysize(kKeycodes); i++) {
       for (int j = 0; j < arraysize(modifiers); j++) {
-        XGrabKey(display, kKeycodes[i], modifiers[j], window, True,
-                 GrabModeAsync, GrabModeAsync);
+        for (int k = 0; k < num_lock_combos; k++) {
+          XGrabKey(display, kKeycodes[i], modifiers[j] | lock_combos[k], window,
+                   True, GrabModeAsync, GrabModeAsync);
+        }
       }
     }
   }
